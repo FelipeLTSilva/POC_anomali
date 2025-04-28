@@ -13,7 +13,7 @@ __author__ = 'ThreatStream LABS - NMA'
 
 apiuser = 'TS_Username' # Or Specify on the commandline
 apikey = 'TS_APIKey' # Or Specify on the commandline
-query_api_url = 'https://api.threatstream.com/api/v2'
+query_api_url = 'https://api.threatstream.com/api/v2/intelligence'
 
 #log.basicConfig(format='%(message)s', level=log.INFO)
 
