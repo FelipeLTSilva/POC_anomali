@@ -11,7 +11,7 @@ pipeline {
                 script {
                     def consulta = "intelligence"
                     // sh "python3 threatstream-api.py ${consulta} ${env.ANOMALI_CREDS_USR} ${env.ANOMALI_CREDS_PSW}"
-                    sh python3 threatstream-api.py intelligence "$ANOMALI_CREDS_USR" "$ANOMALI_CREDS_PSW"
+                    sh '/usr/bin/python3 threatstream-api.py intelligence "$ANOMALI_CREDS_USR" "$ANOMALI_CREDS_PSW"'
                 }
             }
         }
