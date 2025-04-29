@@ -1,8 +1,8 @@
 import requests
 
 # ==== CONFIGURAÇÕES ====
-USERNAME = 'gpereira1@lenovo.com'
-API_KEY = '9ad6b305eb3b5787751936e74b54e6c67b99a6b0'
+USERNAME = 'TS_Username'
+API_KEY = 'TS_APIKey'
 BASE_URL = 'https://api.threatstream.com/api/v1/threat_model_search/'
 
 # ==== CABEÇALHOS DE AUTENTICAÇÃO ====
