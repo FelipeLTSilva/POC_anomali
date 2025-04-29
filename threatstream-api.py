@@ -1,67 +1,57 @@
-# threatstreap-api.py
-#
-# Copyright (C) 2014 THREAT STREAM, Inc.
-# This file is subject to the terms and conditions of the GNU General Public
-# License version 2.  See the file COPYING in the main directory for more
-# details.
 import requests
-import logging as log
-from sys import exit, argv
- 
-__version__ = 2
-__author__ = 'ThreatStream LABS - NMA'
 
-apiuser = 'TS_Username' # Or Specify on the commandline
-apikey = 'TS_APIKey' # Or Specify on the commandline
-query_api_url = 'https://api.threatstream.com/api/v2/intelligence'
+# ==== CONFIGURAÇÕES ====
+USERNAME = 'gpereira1@lenovo.com'
+API_KEY = '9ad6b305eb3b5787751936e74b54e6c67b99a6b0'
+BASE_URL = 'https://api.threatstream.com/api/v1/threat_model_search/'
 
-#log.basicConfig(format='%(message)s', level=log.INFO)
+# ==== CABEÇALHOS DE AUTENTICAÇÃO ====
+HEADERS = {
+    'Authorization': f'apikey {USERNAME}:{API_KEY}',
+    'Accept': 'application/json',
+    'Content-Type': 'application/json'
+}
 
 
-def query_api(apiuser,apikey,resource,flags):
-    url = '{}/{}/?username={}&api_key={}{}'.format(query_api_url, resource, apiuser, apikey, flags)
+def buscar_threat_models(limit=10, offset=0):
+    """
+    Consulta o endpoint threat_model_search da API da Anomali.
+    
+    :param limit: Quantidade de resultados a retornar.
+    :param offset: Ponto de partida para paginação.
+    :return: Lista de objetos retornados pela API.
+    """
+    params = {
+        'limit': limit,
+        'offset': offset
+    }
+
     try:
-      http_req = requests.get(url, headers={'ACCEPT': 'application/json, text/html'})
-      if http_req.status_code == 200: return(http_req.json()['objects']) # Return JSON Blob
-      elif http_req.status_code == 401: 
-        log.error('Access Denied. Check API Credentials')
-        exit(0)
-      else: log.info('API Connection Failure. Status code: {}'.format(http_req.status_code))
-    except Exception as err:
-      log.error('API Access Error: {}'.format(err))
-      exit(0)
-       
+        response = requests.get(BASE_URL, headers=HEADERS, params=params)
+        response.raise_for_status()  # Gera exceção automática se for 4xx ou 5xx
 
-def fetch_intel(apiuser,apikey, *args):
-  if args: query = args[0]
-  else: query = ''
-  r = []
-  log.info('Downloading intelligence: \n')
-  INTEL = { 'c2_domain', 'bot_ip' } # filter to itype
-  limit = 3 # Limit number of responses
-  status = "active" 
-  for itype in INTEL:
-    r.append(query_api(apiuser,apikey,'intelligence',
-      '&extend_source=true&value__re=.*{}.*&limit={}&status={}&itype={}'.format(query, limit, status, itype)))
-  return(r)
+        dados = response.json()
 
-def format_output(jsonblob):
-  r = ""
-  for line in jsonblob:
-      for k, v in line.items():
-        if not v: continue
-        r += "{}: {}\n".format(k, v)
-  return(r)
+        objetos = dados.get('objects', [])
+        if not objetos:
+            print("Nenhum resultado encontrado.")
+        else:
+            print(f"✅ {len(objetos)} modelos de ameaça encontrados:")
+            for obj in objetos:
+                print(f"- ID: {obj.get('id')} | Nome: {obj.get('name')}")
+
+        return objetos
+
+    except requests.exceptions.HTTPError as http_err:
+        print(f"Erro HTTP: {http_err} - {response.text}")
+    except requests.exceptions.RequestException as req_err:
+        print(f"Erro de conexão: {req_err}")
+    except Exception as e:
+        print(f"Erro inesperado: {e}")
+
+    return []
 
 
+# ==== EXECUÇÃO ====
 if __name__ == '__main__':
-  if len(argv) < 2:
-    log.info('Usage: {} [query] {username} {apikey}'.format(__file__))
-    exit(0)
-  if len(argv) == 4:
-    apiuser = argv[2]
-    apikey = argv[3]
-  response = (fetch_intel(apiuser, apikey, argv[1]))
-  for line in response:
-    print(format_output(line)) ## Make human readable. 
-
+    buscar_threat_models(limit=5)
