@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     environment {
-        // Referencia correta da credencial do Jenkins
-        ANOMALI_CREDS = credentials('ANOMALI_CREDS')  // "ANOMALI_CREDS" é o nome da credencial configurada
+        // Referência à credencial ANOMALI_CREDS
+        ANOMALI_CREDS = credentials('ANOMALI_CREDS')  // Nome correto da credencial
     }
 
     stages {
