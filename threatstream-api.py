@@ -22,7 +22,7 @@ HEADERS = {
 }
 
 # ==== KEYWORDS TO MATCH IN NAME FIELD ====
-KEYWORDS = ['aws', 'azure', 'kubernetes', 'k8s', 'vulnerability', 'incident', 'cloud', 'Process Injection - T1055']
+KEYWORDS = ['aws', 'azure', 'kubernetes', 'k8s', 'vulnerability', 'incident', 'cloud', '[MITRE ATT&CK] Network Service Scanning - T1046']
 
 # ==== MODEL TYPES TO SEARCH FOR OBSERVABLES ====
 INTEL_MODELS = {'tipreport', 'ttp', 'tool', 'campaign', 'actor', 'vulnerability', 'incident'}
