@@ -32,7 +32,7 @@ def keyword_match(text):
     return any(kw.lower() in text.lower() for kw in KEYWORDS)
 
 # === Main function to retrieve data from ThreatStream ===
-def buscar_threat_models(endpoint, limit=100, offset=0):
+def buscar_threat_models(endpoint, limit=500, offset=0):
     """
     Query the given ThreatStream endpoint and return filtered results.
     """
@@ -110,7 +110,7 @@ def buscar_observables(model_type, model_id, resultado):
 if __name__ == '__main__':
     try:
         # Fetch and process results
-        resultados = buscar_threat_models(ENDPOINT, limit=100)
+        resultados = buscar_threat_models(ENDPOINT, limit=500)
 
         # Step 4: Print final JSON
         print(json.dumps(resultados, indent=2, ensure_ascii=False))
