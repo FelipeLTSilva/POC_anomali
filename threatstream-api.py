@@ -40,7 +40,7 @@ def buscar_threat_models(endpoint, timestamp, limit=1000, offset=0):
     resultados = []
 
     while True:
-        params = {'limit': limit, 'offset': offset, 'since': timestamp}  # Use the timestamp for the query
+        params = {'limit': limit, 'offset': offset, 'modified_ts': timestamp}  # Use the timestamp for the query
         response = requests.get(f'{BASE_URL}/{endpoint}/', headers=HEADERS, params=params)
         response.raise_for_status()
 
