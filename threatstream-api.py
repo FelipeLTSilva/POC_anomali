@@ -1,11 +1,8 @@
 import requests
 import sys
-import re
 import json
-from datetime import datetime
 
-# ==== INITIAL CONFIGURATION ==== 
-# Script expects 4 arguments: <endpoint> <username> <apikey> <timestamp>
+# ==== INITIAL CONFIGURATION ====
 if len(sys.argv) != 5:
     print("Correct usage: python3 threatstream-api.py <endpoint> <username> <apikey> <timestamp>")
     sys.exit(1)
@@ -40,7 +37,7 @@ def buscar_threat_models(endpoint, timestamp, limit=1000, offset=0):
     resultados = []
 
     while True:
-        params = {'limit': limit, 'offset': offset, 'modified_ts': timestamp}  # Use the timestamp for the query
+        params = {'limit': limit, 'offset': offset, 'modified_ts__gte': timestamp}  # Use the modified_ts filter
         response = requests.get(f'{BASE_URL}/{endpoint}/', headers=HEADERS, params=params)
         response.raise_for_status()
 
@@ -57,7 +54,6 @@ def buscar_threat_models(endpoint, timestamp, limit=1000, offset=0):
 
             # ✅ Filter: only proceed if name matches and model_type is in list
             if name and keyword_match(name) and model_type in INTEL_MODELS:
-                # Step 1.1 and 2: Collect core info + URL
                 resultado = {
                     'id': model_id,
                     'model_type': model_type,
@@ -116,11 +112,9 @@ if __name__ == '__main__':
 
         # Step 5: Return the new timestamp (based on the most recent object modification time)
         if resultados:
-            # Get the most recent modification timestamp from the results
             last_modified = max([res['modified_ts'] for res in resultados], default=None)
             if last_modified:
                 print(f"Novo timestamp: {last_modified}")
-                # Save the new timestamp to the last_timestamp.txt file (to be used in the next run)
                 with open('last_timestamp.txt', 'w') as f:
                     f.write(last_modified)
 
