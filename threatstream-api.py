@@ -1,23 +1,7 @@
 import requests
 import sys
 import json
-
-# ==== INITIAL CONFIGURATION ====
-if len(sys.argv) != 5:
-    print("Correct usage: python3 threatstream-api.py <endpoint> <username> <apikey> <timestamp>")
-    sys.exit(1)
-
-ENDPOINT = sys.argv[1]
-USERNAME = sys.argv[2]
-API_KEY = sys.argv[3]
-LAST_TIMESTAMP = sys.argv[4]  # Timestamp passed from Jenkinsfile
-
-BASE_URL = 'https://api.threatstream.com/api/v1'
-HEADERS = {
-    'Authorization': f'apikey {USERNAME}:{API_KEY}',
-    'Accept': 'application/json',
-    'Content-Type': 'application/json'
-}
+from datetime import datetime
 
 # ==== KEYWORDS TO MATCH IN NAME FIELD ====
 KEYWORDS = ['aws', 'azure', 'kubernetes', 'k8s', 'vulnerability', 'incident', 'cloud']
@@ -25,19 +9,50 @@ KEYWORDS = ['aws', 'azure', 'kubernetes', 'k8s', 'vulnerability', 'incident', 'c
 # ==== MODEL TYPES TO SEARCH FOR OBSERVABLES ====
 INTEL_MODELS = {'tipreport', 'ttp', 'tool', 'campaign', 'actor', 'vulnerability', 'incident'}
 
-# === Helper function to match any keyword ===
+# ==== Helper: Check if name matches any keyword ====
 def keyword_match(text):
     return any(kw.lower() in text.lower() for kw in KEYWORDS)
 
-# === Main function to retrieve data from ThreatStream ===
-def buscar_threat_models(endpoint, timestamp, limit=1000, offset=0):
-    """
-    Query the given ThreatStream endpoint and return filtered results.
-    """
+# ==== Helper: Format timestamp for API ====
+def format_timestamp_for_api(ts):
+    try:
+        dt = datetime.strptime(ts, "%Y%m%dT%H%M%S")
+        return dt.strftime("%Y-%m-%dT%H:%M:%S")
+    except ValueError:
+        print("❌ Timestamp format is invalid. Expected format: YYYYMMDDTHHMMSS")
+        sys.exit(1)
+
+# ==== Get model details (tags) ====
+def detalhar_modelo(model_type, model_id, resultado):
+    url = f'{BASE_URL}/{model_type}/{model_id}/'
+    response = requests.get(url, headers=HEADERS)
+    if response.ok:
+        obj = response.json()
+        resultado['tags'] = obj.get('tags', [])
+
+# ==== Get observables if supported ====
+def buscar_observables(model_type, model_id, resultado):
+    url = f'{BASE_URL}/{model_type}/{model_id}/intelligence/'
+    response = requests.get(url, headers=HEADERS)
+    if response.ok:
+        data = response.json()
+        observables = []
+        for item in data.get('objects', []):
+            value = item.get('value')
+            itype = item.get('itype')
+            if value and itype:
+                observables.append({'value': value, 'itype': itype})
+        resultado['observables'] = observables
+
+# ==== Main query function ====
+def buscar_threat_models(endpoint, timestamp=None, limit=1000, offset=0):
     resultados = []
 
     while True:
-        params = {'limit': limit, 'offset': offset, 'modified_ts__gte': timestamp}  # Use the modified_ts filter
+        params = {'limit': limit, 'offset': offset}
+        if timestamp:
+            params['modified_ts__gte'] = timestamp
+
         response = requests.get(f'{BASE_URL}/{endpoint}/', headers=HEADERS, params=params)
         response.raise_for_status()
 
@@ -52,7 +67,6 @@ def buscar_threat_models(endpoint, timestamp, limit=1000, offset=0):
             model_id = obj.get('id')
             model_type = obj.get('model_type', endpoint)
 
-            # ✅ Filter: only proceed if name matches and model_type is in list
             if name and keyword_match(name) and model_type in INTEL_MODELS:
                 resultado = {
                     'id': model_id,
@@ -64,60 +78,38 @@ def buscar_threat_models(endpoint, timestamp, limit=1000, offset=0):
                     'observables': []
                 }
 
-                # Step 2.2: Get extra details like tags
                 detalhar_modelo(model_type, model_id, resultado)
-
-                # Step 3: Get observables if model_type supports it
                 buscar_observables(model_type, model_id, resultado)
 
                 resultados.append(resultado)
 
-        # Step 1.3: Pagination logic using 'next' from API
         if not data.get('next'):
             break
         offset += limit
 
     return resultados
 
-# === Step 2.2: Retrieve detailed data for each object (e.g. tags) ===
-def detalhar_modelo(model_type, model_id, resultado):
-    url = f'{BASE_URL}/{model_type}/{model_id}/'
-    response = requests.get(url, headers=HEADERS)
-    if response.ok:
-        obj = response.json()
-        resultado['tags'] = obj.get('tags', [])
-
-# === Step 3.1: Retrieve intelligence observables for supported models ===
-def buscar_observables(model_type, model_id, resultado):
-    url = f'{BASE_URL}/{model_type}/{model_id}/intelligence/'
-    response = requests.get(url, headers=HEADERS)
-    if response.ok:
-        data = response.json()
-        observables = []
-        for item in data.get('objects', []):
-            value = item.get('value')
-            itype = item.get('itype')
-            if value and itype:
-                observables.append({'value': value, 'itype': itype})
-        resultado['observables'] = observables
-
-# === MAIN EXECUTION BLOCK ===
+# ==== Entry Point ====
 if __name__ == '__main__':
+    if len(sys.argv) not in [4, 5]:
+        print("Usage: python3 threatstream-api.py <endpoint> <username> <apikey> [timestamp]")
+        sys.exit(1)
+
+    ENDPOINT = sys.argv[1]
+    USERNAME = sys.argv[2]
+    API_KEY = sys.argv[3]
+    LAST_TIMESTAMP = format_timestamp_for_api(sys.argv[4]) if len(sys.argv) == 5 else None
+
+    BASE_URL = 'https://api.threatstream.com/api/v1'
+    HEADERS = {
+        'Authorization': f'apikey {USERNAME}:{API_KEY}',
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+    }
+
     try:
-        # Fetch and process results
-        resultados = buscar_threat_models(ENDPOINT, LAST_TIMESTAMP, limit=1000)
-
-        # Step 4: Print final JSON
+        resultados = buscar_threat_models(ENDPOINT, timestamp=LAST_TIMESTAMP)
         print(json.dumps(resultados, indent=2, ensure_ascii=False))
-
-        # Step 5: Return the new timestamp (based on the most recent object modification time)
-        if resultados:
-            last_modified = max([res['modified_ts'] for res in resultados], default=None)
-            if last_modified:
-                print(f"Novo timestamp: {last_modified}")
-                with open('last_timestamp.txt', 'w') as f:
-                    f.write(last_modified)
-
     except requests.exceptions.RequestException as e:
         print(f"Connection or HTTP error: {e}")
     except Exception as e:
