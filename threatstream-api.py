@@ -1,6 +1,5 @@
 import requests
 import sys
-import re
 import json
 from datetime import datetime
 
@@ -21,77 +20,31 @@ HEADERS = {
     'Content-Type': 'application/json'
 }
 
-# ==== KEYWORDS TO MATCH IN NAME FIELD ====
-KEYWORDS = ['aws', 'azure', 'kubernetes', 'k8s', 'vulnerability', 'incident', 'cloud', 't1046', 'process injection', 'network service scanning', 't1055']
+# ==== KEYWORDS TO MATCH IN NAME FIELD (case-insensitive) ====
+# Loosely matching keywords for better hit rate
+KEYWORDS = [
+    'aws', 'azure', 'kubernetes', 'k8s', 'vulnerability', 'incident', 'cloud',
+    't1046', 't1055', 'network service scanning', 'process injection'
+]
 
-# ==== MODEL TYPES TO SEARCH FOR OBSERVABLES ====
+# ==== MODEL TYPES TO INCLUDE ====
+# Limit processing only to these model types
 INTEL_MODELS = {'ttp'}
 
-# === Helper function to match any keyword ===
+# === Helper: Check if name contains any keyword ===
 def keyword_match(text):
     return any(kw.lower() in text.lower() for kw in KEYWORDS)
 
-# === Main function to retrieve data from ThreatStream ===
-def buscar_threat_models(endpoint, limit=1000, offset=0):
-    """
-    Query the given ThreatStream endpoint and return filtered results.
-    """
-    resultados = []
-
-    while True:
-        params = {'limit': limit, 'offset': offset}
-        response = requests.get(f'{BASE_URL}/{endpoint}/', headers=HEADERS, params=params)
-        response.raise_for_status()
-
-        data = response.json()
-        objetos = data.get('objects', [])
-        if not objetos:
-            break
-
-        for obj in objetos:
-            name = obj.get('name', '')
-            modified_ts = obj.get('modified_ts', '')
-            model_id = obj.get('id')
-            model_type = obj.get('model_type', endpoint)
-
-            # ✅ Filter: only proceed if name matches and model_type is in list
-            if name and keyword_match(name) and model_type in INTEL_MODELS:
-                # Step 1.1 and 2: Collect core info + URL
-                resultado = {
-                    'id': model_id,
-                    'model_type': model_type,
-                    'name': name,
-                    'modified_ts': modified_ts,
-                    'link': f'https://ui.threatstream.com/{model_type}/{model_id}',
-                    'tags': [],
-                    'observables': []
-                }
-
-                # Step 2.2: Get extra details like tags
-                detalhar_modelo(model_type, model_id, resultado)
-
-                # Step 3: Get observables if model_type supports it
-                buscar_observables(model_type, model_id, resultado)
-
-                resultados.append(resultado)
-
-        # Step 1.3: Pagination logic using 'next' from API
-        if not data.get('next'):
-            break
-        offset += limit
-
-    return resultados
-
 # === Step 2.2: Retrieve detailed data for each object (e.g. tags) ===
-def detalhar_modelo(model_type, model_id, resultado):
+def fetch_model_details(model_type, model_id, result):
     url = f'{BASE_URL}/{model_type}/{model_id}/'
     response = requests.get(url, headers=HEADERS)
     if response.ok:
         obj = response.json()
-        resultado['tags'] = obj.get('tags', [])
+        result['tags'] = obj.get('tags', [])
 
 # === Step 3.1: Retrieve intelligence observables for supported models ===
-def buscar_observables(model_type, model_id, resultado):
+def fetch_observables(model_type, model_id, result):
     url = f'{BASE_URL}/{model_type}/{model_id}/intelligence/'
     response = requests.get(url, headers=HEADERS)
     if response.ok:
@@ -102,16 +55,68 @@ def buscar_observables(model_type, model_id, resultado):
             itype = item.get('itype')
             if value and itype:
                 observables.append({'value': value, 'itype': itype})
-        resultado['observables'] = observables
+        result['observables'] = observables
 
-# === MAIN EXECUTION BLOCK ===
+# === Main logic to fetch and filter threat models ===
+def fetch_threat_models(endpoint, limit=1000, offset=0):
+    results = []
+
+    while True:
+        params = {'limit': limit, 'offset': offset}
+        response = requests.get(f'{BASE_URL}/{endpoint}/', headers=HEADERS, params=params)
+        response.raise_for_status()
+
+        data = response.json()
+        objects = data.get('objects', [])
+        if not objects:
+            break
+
+        for obj in objects:
+            name = obj.get('name', '')
+            model_id = obj.get('id')
+            model_type = obj.get('model_type', endpoint).lower()
+            modified_ts = obj.get('modified_ts', '')
+
+            # === Skip if model_type is not in the allowed set ===
+            if model_type not in INTEL_MODELS:
+                continue
+
+            # === Skip if name doesn't contain keywords ===
+            if not keyword_match(name):
+                continue
+
+            # === Build base result object ===
+            result = {
+                'id': model_id,
+                'model_type': model_type,
+                'name': name,
+                'modified_ts': modified_ts,
+                'link': f'https://ui.threatstream.com/{model_type}/{model_id}',
+                'tags': [],
+                'observables': []
+            }
+
+            # === Add tags ===
+            fetch_model_details(model_type, model_id, result)
+
+            # === Add observables if model supports it ===
+            if model_type in INTEL_MODELS:
+                fetch_observables(model_type, model_id, result)
+
+            results.append(result)
+
+        # === Stop if there's no next page ===
+        if not data.get('next'):
+            break
+        offset += limit
+
+    return results
+
+# === MAIN EXECUTION ===
 if __name__ == '__main__':
     try:
-        # Fetch and process results
-        resultados = buscar_threat_models(ENDPOINT, limit=1000)
-
-        # Step 4: Print final JSON
-        print(json.dumps(resultados, indent=2, ensure_ascii=False))
+        results = fetch_threat_models(ENDPOINT)
+        print(json.dumps(results, indent=2, ensure_ascii=False))
     except requests.exceptions.RequestException as e:
         print(f"Connection or HTTP error: {e}")
     except Exception as e:
