@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     environment {
-        // Certifique-se de que a credencial ANOMALI_CREDS esteja configurada corretamente no Jenkins
-        ANOMALI_CREDS = credentials('ANOMALI_CREDS')  // A credencial ANOMALI_CREDS que você configurou no Jenkins
+        // Referencia correta da credencial do Jenkins
+        ANOMALI_CREDS = credentials('ANOMALI_CREDS')  // "ANOMALI_CREDS" é o nome da credencial configurada
     }
 
     stages {
@@ -29,7 +29,7 @@ pipeline {
         stage('Run Script') {
             steps {
                 script {
-                    // Passa o timestamp como argumento para o script Python
+                    // Passa o timestamp como argumento para o script Python e usa a credencial
                     sh """
                         python3 threatstream-api.py threat_model_search ${ANOMALI_CREDS_USR} ${ANOMALI_CREDS_PSW} ${env.LAST_TIMESTAMP}
                     """
@@ -40,7 +40,7 @@ pipeline {
         stage('Update Timestamp') {
             steps {
                 script {
-                    // Após a execução, atualiza o last_timestamp.txt com o novo timestamp
+                    // Atualiza o arquivo last_timestamp.txt com o novo timestamp
                     def newTimestamp = "20250501T000000"  // Exemplo, você precisará capturar o novo timestamp da resposta da API
                     writeFile file: 'last_timestamp.txt', text: newTimestamp
                     echo "Novo timestamp gravado: ${newTimestamp}"
