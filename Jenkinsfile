@@ -11,7 +11,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 // Clona o repositório com permissão de push
-                git credentialsId: 'github-push-token', url: 'https://github.com/seu-usuario/seu-repo.git', branch: 'main'
+                git credentialsId: 'github-push-token', url: 'https://github.com/FelipeLTSilva/POC_anomali.git', branch: 'main'
             }
         }
 
@@ -51,7 +51,7 @@ pipeline {
                         git config user.email "jenkins@bot.com"
                         git add ${env.TIMESTAMP_FILE}
                         git commit -m "Atualiza timestamp para ${newTs}" || echo "Nada para commitar"
-                        git push https://${GIT_CREDS_USR}:${GIT_CREDS_PSW}@github.com/seu-usuario/seu-repo.git HEAD:main
+                        git push https://${GIT_CREDS_USR}:${GIT_CREDS_PSW}@github.com/FelipeLTSilva/POC_anomali.git HEAD:main
                     """
                 }
             }
