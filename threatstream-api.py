@@ -5,17 +5,14 @@ import json
 from datetime import datetime
 
 # ==== INITIAL CONFIGURATION ====
-# Script expects 3 arguments: <endpoint> <username> <apikey> [timestamp]
-if len(sys.argv) < 4 or len(sys.argv) > 5:
-    print("Correct usage: python3 threatstream-api.py <endpoint> <username> <apikey> [timestamp]")
+# Script expects 3 arguments: <endpoint> <username> <apikey>
+if len(sys.argv) != 4:
+    print("Correct usage: python3 threatstream-api.py <endpoint> <username> <apikey>")
     sys.exit(1)
 
 ENDPOINT = sys.argv[1]
 USERNAME = sys.argv[2]
 API_KEY = sys.argv[3]
-
-# Optional timestamp argument
-timestamp = sys.argv[4] if len(sys.argv) == 5 else None
 
 BASE_URL = 'https://api.threatstream.com/api/v1'
 HEADERS = {
@@ -35,7 +32,7 @@ def keyword_match(text):
     return any(kw.lower() in text.lower() for kw in KEYWORDS)
 
 # === Main function to retrieve data from ThreatStream ===
-def buscar_threat_models(endpoint, limit=1000, offset=0, timestamp=None):
+def buscar_threat_models(endpoint, limit=1000, offset=0):
     """
     Query the given ThreatStream endpoint and return filtered results.
     """
@@ -43,9 +40,6 @@ def buscar_threat_models(endpoint, limit=1000, offset=0, timestamp=None):
 
     while True:
         params = {'limit': limit, 'offset': offset}
-        if timestamp:
-            params['modified_ts__gte'] = timestamp  # Add the timestamp filter if provided
-
         response = requests.get(f'{BASE_URL}/{endpoint}/', headers=HEADERS, params=params)
         response.raise_for_status()
 
@@ -57,12 +51,11 @@ def buscar_threat_models(endpoint, limit=1000, offset=0, timestamp=None):
         for obj in objetos:
             name = obj.get('name', '')
             modified_ts = obj.get('modified_ts', '')
-            
-            # Step 1.2: Filter based on name keyword match
-            if name and keyword_match(name):
-                model_id = obj.get('id')
-                model_type = obj.get('model_type', endpoint)  # fallback to endpoint name
+            model_id = obj.get('id')
+            model_type = obj.get('model_type', endpoint)
 
+            # ✅ Filter: only proceed if name matches and model_type is in list
+            if name and keyword_match(name) and model_type in INTEL_MODELS:
                 # Step 1.1 and 2: Collect core info + URL
                 resultado = {
                     'id': model_id,
@@ -77,9 +70,8 @@ def buscar_threat_models(endpoint, limit=1000, offset=0, timestamp=None):
                 # Step 2.2: Get extra details like tags
                 detalhar_modelo(model_type, model_id, resultado)
 
-                # Step 3: If model_type supports observables, fetch them
-                if model_type in INTEL_MODELS:
-                    buscar_observables(model_type, model_id, resultado)
+                # Step 3: Get observables if model_type supports it
+                buscar_observables(model_type, model_id, resultado)
 
                 resultados.append(resultado)
 
@@ -115,8 +107,8 @@ def buscar_observables(model_type, model_id, resultado):
 # === MAIN EXECUTION BLOCK ===
 if __name__ == '__main__':
     try:
-        # Fetch and process results with optional timestamp
-        resultados = buscar_threat_models(ENDPOINT, limit=1000, timestamp=timestamp)
+        # Fetch and process results
+        resultados = buscar_threat_models(ENDPOINT, limit=1000)
 
         # Step 4: Print final JSON
         print(json.dumps(resultados, indent=2, ensure_ascii=False))
