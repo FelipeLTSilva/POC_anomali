@@ -51,12 +51,11 @@ def buscar_threat_models(endpoint, limit=1000, offset=0):
         for obj in objetos:
             name = obj.get('name', '')
             modified_ts = obj.get('modified_ts', '')
-            
-            # Step 1.2: Filter based on name keyword match
-            if name and keyword_match(name):
-                model_id = obj.get('id')
-                model_type = obj.get('model_type', endpoint)  # fallback to endpoint name
+            model_id = obj.get('id')
+            model_type = obj.get('model_type', endpoint)
 
+            # ✅ Filter: only proceed if name matches and model_type is in list
+            if name and keyword_match(name) and model_type in INTEL_MODELS:
                 # Step 1.1 and 2: Collect core info + URL
                 resultado = {
                     'id': model_id,
@@ -71,9 +70,8 @@ def buscar_threat_models(endpoint, limit=1000, offset=0):
                 # Step 2.2: Get extra details like tags
                 detalhar_modelo(model_type, model_id, resultado)
 
-                # Step 3: If model_type supports observables, fetch them
-                if model_type in INTEL_MODELS:
-                    buscar_observables(model_type, model_id, resultado)
+                # Step 3: Get observables if model_type supports it
+                buscar_observables(model_type, model_id, resultado)
 
                 resultados.append(resultado)
 
