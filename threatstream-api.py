@@ -22,10 +22,10 @@ HEADERS = {
 }
 
 # ==== KEYWORDS TO MATCH IN NAME FIELD ====
-KEYWORDS = ['aws', 'azure', 'kubernetes', 'k8s', 'vulnerability', 'incident', 'cloud', '[MITRE ATT&CK] Network Service Scanning - T1046']
+KEYWORDS = ['aws', 'azure', 'kubernetes', 'k8s', 'vulnerability', 'incident', 'cloud', '[MITRE ATT&CK] Network Service Scanning - T1046', '[MITRE ATT&CK] Process Injection - T1055']
 
 # ==== MODEL TYPES TO SEARCH FOR OBSERVABLES ====
-INTEL_MODELS = {'tipreport', 'ttp', 'tool', 'campaign', 'actor', 'vulnerability', 'incident'}
+INTEL_MODELS = {'ttp'}
 
 # === Helper function to match any keyword ===
 def keyword_match(text):
