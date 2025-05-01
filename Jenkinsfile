@@ -2,29 +2,25 @@ pipeline {
     agent any
 
     environment {
-        ANOMALI_CREDS = credentials('anomali-creds')         // API credentials
-        GIT_CREDS = credentials('github-push-token')         // GitHub token credentials
-        TIMESTAMP_FILE = 'last_timestamp.txt'
+        ANOMALI_CREDS_PSW = credentials('ANOMALI_CREDS')  // Acredite que você já tem essa credencial configurada no Jenkins
     }
 
     stages {
         stage('Checkout') {
             steps {
-                // Clona o repositório com permissão de push
-                git credentialsId: 'github-push-token', url: 'https://github.com/FelipeLTSilva/POC_anomali.git', branch: 'main'
+                git 'https://github.com/FelipeLTSilva/POC_anomali.git'  // Seu repositório no GitHub
             }
         }
 
         stage('Read Last Timestamp') {
             steps {
                 script {
-                    if (fileExists(env.TIMESTAMP_FILE)) {
-                        env.LAST_TS = readFile(env.TIMESTAMP_FILE).trim()
-                        echo "🔁 Último timestamp coletado: ${env.LAST_TS}"
-                    } else {
-                        env.LAST_TS = '20000101T000000'
-                        echo "⚠️ Arquivo de timestamp não encontrado. Usando valor padrão: ${env.LAST_TS}"
-                    }
+                    // Lê o último timestamp do arquivo last_timestamp.txt
+                    def lastTimestamp = readFile('last_timestamp.txt').trim()
+                    echo "🔁 Último timestamp coletado: ${lastTimestamp}"
+
+                    // Armazena o timestamp em uma variável de ambiente
+                    env.LAST_TIMESTAMP = lastTimestamp
                 }
             }
         }
@@ -32,10 +28,9 @@ pipeline {
         stage('Run Script') {
             steps {
                 script {
+                    // Passa o timestamp como argumento para o script Python
                     sh """
-                        python3 threatstream-api.py threat_model_search \
-                        "${ANOMALI_CREDS_USR}" "${ANOMALI_CREDS_PSW}" \
-                        --since "${env.LAST_TS}"
+                        python3 threatstream-api.py threat_model_search ${ANOMALI_CREDS_PSW_USR} ${ANOMALI_CREDS_PSW_PSW} ${env.LAST_TIMESTAMP}
                     """
                 }
             }
@@ -44,15 +39,10 @@ pipeline {
         stage('Update Timestamp') {
             steps {
                 script {
-                    def newTs = new Date().format("yyyyMMdd'T'HHmmss", TimeZone.getTimeZone('UTC'))
-                    writeFile file: env.TIMESTAMP_FILE, text: newTs
-                    sh """
-                        git config user.name "Jenkins Bot"
-                        git config user.email "jenkins@bot.com"
-                        git add ${env.TIMESTAMP_FILE}
-                        git commit -m "Atualiza timestamp para ${newTs}" || echo "Nada para commitar"
-                        git push https://${GIT_CREDS_USR}:${GIT_CREDS_PSW}@github.com/FelipeLTSilva/POC_anomali.git HEAD:main
-                    """
+                    // Após a execução, atualiza o last_timestamp.txt com o novo timestamp
+                    def newTimestamp = "20250501T000000"  // Exemplo, você precisará capturar o novo timestamp da resposta da API
+                    writeFile file: 'last_timestamp.txt', text: newTimestamp
+                    echo "Novo timestamp gravado: ${newTimestamp}"
                 }
             }
         }
