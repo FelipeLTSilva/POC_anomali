@@ -2,7 +2,8 @@ pipeline {
     agent any
 
     environment {
-        ANOMALI_CREDS_PSW = credentials('ANOMALI_CREDS')  // Acredite que você já tem essa credencial configurada no Jenkins
+        // Certifique-se de que a credencial ANOMALI_CREDS esteja configurada corretamente no Jenkins
+        ANOMALI_CREDS = credentials('ANOMALI_CREDS')  // A credencial ANOMALI_CREDS que você configurou no Jenkins
     }
 
     stages {
@@ -30,7 +31,7 @@ pipeline {
                 script {
                     // Passa o timestamp como argumento para o script Python
                     sh """
-                        python3 threatstream-api.py threat_model_search ${ANOMALI_CREDS_PSW_USR} ${ANOMALI_CREDS_PSW_PSW} ${env.LAST_TIMESTAMP}
+                        python3 threatstream-api.py threat_model_search ${ANOMALI_CREDS_USR} ${ANOMALI_CREDS_PSW} ${env.LAST_TIMESTAMP}
                     """
                 }
             }
