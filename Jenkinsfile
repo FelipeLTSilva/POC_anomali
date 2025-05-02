@@ -12,7 +12,7 @@ pipeline {
                     if (fileExists(env.LAST_TIMESTAMP_FILE)) {
                         env.LAST_TIMESTAMP = readFile(env.LAST_TIMESTAMP_FILE).trim()
                     } else {
-                        env.LAST_TIMESTAMP = '20250101T000000'  // Valor inicial padrão
+                        env.LAST_TIMESTAMP = '20250101T000000'  // valor padrão
                     }
                     echo "🔁 Último timestamp coletado: ${env.LAST_TIMESTAMP}"
                 }
@@ -40,11 +40,27 @@ pipeline {
                 }
             }
         }
+
+        stage('Commit Timestamp') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'github-token',
+                                                  usernameVariable: 'GIT_USER',
+                                                  passwordVariable: 'GIT_TOKEN')]) {
+                    sh '''
+                        git config user.email "jenkins@yourdomain.com"
+                        git config user.name "Jenkins CI"
+                        git add last_timestamp.txt
+                        git commit -m "Update timestamp [skip ci]" || echo "No changes to commit"
+                        git push https://${GIT_USER}:${GIT_TOKEN}@github.com/FelipeLTSilva/POC_anomali.git HEAD:main
+                    '''
+                }
+            }
+        }
     }
 
     post {
         failure {
-            echo "Pipeline falhou!"
+            echo "🚨 Pipeline falhou!"
         }
     }
 }
