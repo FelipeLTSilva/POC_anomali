@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    triggers {
+        cron('H/20 * * * *') // Executa a cada 20 minutos
+    }
+
     environment {
         LAST_TIMESTAMP_FILE = 'last_timestamp.txt'
     }
