@@ -16,7 +16,7 @@ pipeline {
                     if (fileExists(env.LAST_TIMESTAMP_FILE)) {
                         env.LAST_TIMESTAMP = readFile(env.LAST_TIMESTAMP_FILE).trim()
                     } else {
-                        env.LAST_TIMESTAMP = '20250101T000000'  // valor padrão
+                        env.LAST_TIMESTAMP = '20250101T000000'  // valor padrão inicial
                     }
                     echo "🔁 Último timestamp coletado: ${env.LAST_TIMESTAMP}"
                 }
@@ -72,4 +72,3 @@ pipeline {
         }
     }
 }
-``
