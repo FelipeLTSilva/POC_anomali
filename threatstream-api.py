@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 
 # ==== PALAVRAS-CHAVE PARA FILTRAR ====
-KEYWORDS = ['aws', 'azure', 'kubernetes', 'k8s', 'vulnerability', 'incident', 'cloud']
+KEYWORDS = ['aws', 'azure', 'kubernetes', 'k8s', 'vulnerability', 'incident', 'cloud', 'Cyb3rF0x', 'vandalism', 'KnowBe4']
 
 # ==== MODELOS SUPORTADOS ====
 INTEL_MODELS = {'tipreport', 'ttp', 'tool', 'campaign', 'actor', 'vulnerability', 'incident'}
@@ -41,7 +41,7 @@ def buscar_observables(model_type, model_id, resultado):
                 observables.append({'value': value, 'itype': itype})
         resultado['observables'] = observables
 
-def buscar_threat_models(endpoint, timestamp=None, limit=3, offset=0):
+def buscar_threat_models(endpoint, timestamp=None, limit=2, offset=0):
     resultados = []
 
     while True:
