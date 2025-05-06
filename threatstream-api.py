@@ -47,7 +47,7 @@ def buscar_threat_models(endpoint, timestamp=None, limit=3, offset=0):
     while True:
         params = {'limit': limit, 'offset': offset}
         if timestamp:
-            params['modified_ts__gt'] = timestamp  # ALTERAÇÃO AQUI ✅
+            params['modified_ts__gte'] = timestamp
 
         response = requests.get(f'{BASE_URL}/{endpoint}/', headers=HEADERS, params=params)
         response.raise_for_status()
