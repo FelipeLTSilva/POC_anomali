@@ -105,17 +105,17 @@ def criar_ticket_halo(token, resultado):
     }
 
     payload = {
-        "summary": resultado['name'],
-        "description": resultado['link'],
+        "summary": f"[Threatstream] {resultado['model_type']} {resultado['id']} - {resultado['name']}",
+        "description": str(resultado['link']),
         "tickettype_id": 42,
         "team": {"name": "SMEs"},
         "customfields": [
             {"customfield_id": 253, "value": str(resultado['id'])},
-            {"customfield_id": 254, "value": resultado['model_type']},
-            {"customfield_id": 255, "value": resultado['name']},
-            {"customfield_id": 256, "value": resultado['modified_ts']},
-            {"customfield_id": 257, "value": resultado['link']},
-            {"customfield_id": 258, "value": ", ".join(resultado['tags'])},
+            {"customfield_id": 254, "value": str(resultado['model_type'])},
+            {"customfield_id": 255, "value": str(resultado['name'])},
+            {"customfield_id": 256, "value": str(resultado['modified_ts'])},
+            {"customfield_id": 257, "value": str(resultado['link'])},
+            {"customfield_id": 258, "value": ", ".join(map(str, resultado['tags']))},
             {"customfield_id": 259, "value": json.dumps(resultado['observables'])}
         ]
     }
