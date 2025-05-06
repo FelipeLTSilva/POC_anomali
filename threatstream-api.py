@@ -104,21 +104,22 @@ def criar_ticket_halo(token, resultado):
         "Content-Type": "application/json"
     }
 
-    payload = {
-        "summary": f"[Threatstream] {resultado['model_type']} {resultado['id']} - {resultado['name']}",
-        "description": str(resultado['link']),
+    payload = [{
+        "summary": f"[Threatstream] {resultado['model_type']} {resultado['id']}",
+        "details": f"Link: {resultado['link']}",
         "tickettype_id": 42,
-        "team": {"name": "SMEs"},
+        "team": "SMEs",
+        "priority_id": 1,
         "customfields": [
-            {"customfield_id": 253, "value": str(resultado['id'])},
-            {"customfield_id": 254, "value": str(resultado['model_type'])},
-            {"customfield_id": 255, "value": str(resultado['name'])},
-            {"customfield_id": 256, "value": str(resultado['modified_ts'])},
-            {"customfield_id": 257, "value": str(resultado['link'])},
-            {"customfield_id": 258, "value": ", ".join(map(str, resultado['tags']))},
-            {"customfield_id": 259, "value": json.dumps(resultado['observables'])}
+            {"id": 253, "value": str(resultado['id'])},
+            {"id": 254, "value": resultado['model_type']},
+            {"id": 255, "value": resultado['name']},
+            {"id": 256, "value": resultado['modified_ts']},
+            {"id": 257, "value": resultado['link']},
+            {"id": 258, "value": ", ".join(resultado['tags'])},
+            {"id": 259, "value": json.dumps(resultado['observables'])}
         ]
-    }
+    }]
 
     response = requests.post(url, headers=headers, json=payload)
     if response.status_code == 201:
