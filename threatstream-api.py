@@ -28,6 +28,7 @@ def detalhar_modelo(model_type, model_id, resultado):
     if response.ok:
         obj = response.json()
         resultado['tags'] = obj.get('tags', [])
+        resultado['description'] = obj.get('description', '')  # ✅ Novo campo
 
 def buscar_observables(model_type, model_id, resultado):
     url = f'{BASE_URL}/{model_type}/{model_id}/intelligence/'
@@ -53,6 +54,8 @@ def buscar_threat_models(endpoint, timestamp=None, limit=3, offset=0):
         response.raise_for_status()
 
         objetos = response.json().get('objects', [])
+        print(f"🔁 Página recebida: {len(objetos)} objetos (offset: {offset})")
+
         if not objetos:
             break
 
@@ -70,15 +73,14 @@ def buscar_threat_models(endpoint, timestamp=None, limit=3, offset=0):
                     'modified_ts': modified_ts,
                     'link': f'https://ui.threatstream.com/{model_type}/{model_id}',
                     'tags': [],
-                    'observables': []
+                    'observables': [],
+                    'description': ''  # placeholder
                 }
 
                 detalhar_modelo(model_type, model_id, resultado)
                 buscar_observables(model_type, model_id, resultado)
                 resultados.append(resultado)
 
-        if not response.json().get('next'):
-            break
         offset += limit
 
     return resultados
@@ -106,7 +108,7 @@ def criar_ticket_halo(token, resultado):
 
     payload = [{
         "summary": f"[Threatstream] {resultado['model_type']} {resultado['id']}",
-        "details": f"Link: {resultado['link']}",
+        "details": f"{resultado['description']}\n\nLink: {resultado['link']}",
         "tickettype_id": 42,
         "team": "SMEs",
         "priority_id": 1,
