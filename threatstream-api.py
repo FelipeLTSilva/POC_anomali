@@ -86,7 +86,7 @@ def buscar_threat_models(endpoint, timestamp=None, limit=2, offset=0):
 # ==== Integração com Halo ITSM ====
 
 def obter_token_halo(client_id, client_secret):
-    url = "https://meusistema.haloitsm.com/auth/token"
+    url = "https://scoesoc.haloitsm.com/auth/token"
     data = {
         "grant_type": "client_credentials",
         "client_id": client_id,
@@ -98,7 +98,7 @@ def obter_token_halo(client_id, client_secret):
     return response.json()['access_token']
 
 def criar_ticket_halo(token, resultado):
-    url = "https://meusistema.haloitsm.com/api/tickets"
+    url = "https://scoesoc.haloitsm.com/api/tickets"
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json"
