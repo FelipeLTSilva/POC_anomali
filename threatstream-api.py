@@ -42,7 +42,7 @@ def buscar_observables(model_type, model_id, resultado):
         resultado['observables'] = observables
 
 # ==== FUNÇÃO REVISADA AQUI ====
-def buscar_threat_models(endpoint, timestamp=None, limit=100, offset=0):
+def buscar_threat_models(endpoint, timestamp=None, limit=3, offset=0):
     resultados = []
 
     while True:
