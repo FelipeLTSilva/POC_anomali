@@ -51,7 +51,7 @@ def buscar_observables(model_type, model_id, resultado):
                 observables.append({'value': value, 'itype': itype})
         resultado['observables'] = observables
 
-def buscar_por_modelo(model_type, timestamp, limit=100):
+def buscar_por_modelo(model_type, timestamp, limit=3):
     offset = 0
     resultados = []
 
