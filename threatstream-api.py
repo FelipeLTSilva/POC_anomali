@@ -7,7 +7,7 @@ from datetime import datetime
 KEYWORDS = ['aws', 'azure', 'kubernetes', 'k8s', 'vulnerability', 'incident', 'cloud']
 
 # ==== MODELOS SUPORTADOS ====
-INTEL_MODELS = {'tipreport', 'ttp', 'tool', 'campaign', 'actor', 'vulnerability', 'incident'}
+INTEL_MODELS = {'ttp', 'tool', 'campaign', 'actor', 'vulnerability', 'incident'}
 
 # ==== Funções Auxiliares ====
 
