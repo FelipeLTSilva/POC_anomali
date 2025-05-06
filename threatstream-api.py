@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 
 # ==== PALAVRAS-CHAVE PARA FILTRAR ====
-KEYWORDS = ['aws', 'azure', 'kubernetes', 'k8s', 'vulnerability', 'incident', 'cloud', 'Cyb3rF0x', 'vandalism', 'KnowBe4']
+KEYWORDS = ['aws', 'azure', 'kubernetes', 'k8s', 'vulnerability', 'incident', 'cloud', 'Cyb3rF0x', 'vandalism', 'KnowBe4', 'Android', 'Ransomware', 'Facebook', 'extortion']
 
 # ==== MODELOS SUPORTADOS ====
 INTEL_MODELS = {'tipreport', 'ttp', 'tool', 'campaign', 'actor', 'vulnerability', 'incident'}
@@ -41,51 +41,45 @@ def buscar_observables(model_type, model_id, resultado):
                 observables.append({'value': value, 'itype': itype})
         resultado['observables'] = observables
 
-def buscar_threat_models(timestamp=None, limit=5):
+def buscar_threat_models(endpoint, timestamp=None, limit=2, offset=0):
     resultados = []
 
-    for model_type in INTEL_MODELS:
-        offset = 0
-        print(f"🔍 Buscando: {model_type}")
+    while True:
+        params = {'limit': limit, 'offset': offset}
+        if timestamp:
+            params['modified_ts__gte'] = timestamp
 
-        while True:
-            params = {'limit': limit, 'offset': offset}
-            if timestamp:
-                params['modified_ts__gte'] = timestamp
+        response = requests.get(f'{BASE_URL}/{endpoint}/', headers=HEADERS, params=params)
+        response.raise_for_status()
 
-            response = requests.get(f'{BASE_URL}/{model_type}/', headers=HEADERS, params=params)
+        objetos = response.json().get('objects', [])
+        if not objetos:
+            break
 
-            if response.status_code == 400:
-                print(f"⚠️  {model_type} não suporta filtro modified_ts — continuando sem ele.")
-                params.pop('modified_ts__gte')
-                response = requests.get(f'{BASE_URL}/{model_type}/', headers=HEADERS, params=params)
+        for obj in objetos:
+            name = obj.get('name', '')
+            modified_ts = obj.get('modified_ts', '')
+            model_id = obj.get('id')
+            model_type = obj.get('model_type', endpoint)
 
-            response.raise_for_status()
-            objetos = response.json().get('objects', [])
-            if not objetos:
-                break
+            if name and keyword_match(name) and model_type in INTEL_MODELS:
+                resultado = {
+                    'id': model_id,
+                    'model_type': model_type,
+                    'name': name,
+                    'modified_ts': modified_ts,
+                    'link': f'https://ui.threatstream.com/{model_type}/{model_id}',
+                    'tags': [],
+                    'observables': []
+                }
 
-            for obj in objetos:
-                name = obj.get('name', '')
-                modified_ts = obj.get('modified_ts', '')
-                model_id = obj.get('id')
+                detalhar_modelo(model_type, model_id, resultado)
+                buscar_observables(model_type, model_id, resultado)
+                resultados.append(resultado)
 
-                if name and keyword_match(name):
-                    resultado = {
-                        'id': model_id,
-                        'model_type': model_type,
-                        'name': name,
-                        'modified_ts': modified_ts,
-                        'link': f'https://ui.threatstream.com/{model_type}/{model_id}',
-                        'tags': [],
-                        'observables': []
-                    }
-
-                    detalhar_modelo(model_type, model_id, resultado)
-                    buscar_observables(model_type, model_id, resultado)
-                    resultados.append(resultado)
-
-            offset += limit
+        if not response.json().get('next'):
+            break
+        offset += limit
 
     return resultados
 
@@ -137,10 +131,10 @@ def criar_ticket_halo(token, resultado):
 
 if __name__ == '__main__':
     if len(sys.argv) != 7:
-        print("Uso: python3 threatstream-api.py <ignored> <anomali_user> <anomali_apikey> <timestamp> <halo_client_id> <halo_client_secret>")
+        print("Uso: python3 threatstream-api.py <endpoint> <anomali_user> <anomali_apikey> <timestamp> <halo_client_id> <halo_client_secret>")
         sys.exit(1)
 
-    # o primeiro argumento não é mais usado (endpoint era usado antes)
+    ENDPOINT = sys.argv[1]
     USERNAME = sys.argv[2]
     API_KEY = sys.argv[3]
     TIMESTAMP = format_timestamp_for_api(sys.argv[4])
@@ -155,7 +149,7 @@ if __name__ == '__main__':
     }
 
     try:
-        resultados = buscar_threat_models(timestamp=TIMESTAMP)
+        resultados = buscar_threat_models(ENDPOINT, timestamp=TIMESTAMP)
         print(f"🔎 {len(resultados)} itens encontrados")
 
         if resultados:
