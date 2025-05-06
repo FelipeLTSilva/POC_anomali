@@ -41,7 +41,7 @@ def buscar_observables(model_type, model_id, resultado):
                 observables.append({'value': value, 'itype': itype})
         resultado['observables'] = observables
 
-def buscar_threat_models(timestamp=None, limit=50):
+def buscar_threat_models(timestamp=None, limit=5):
     resultados = []
 
     for model_type in INTEL_MODELS:
