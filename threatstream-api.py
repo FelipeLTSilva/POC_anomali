@@ -41,20 +41,13 @@ def buscar_observables(model_type, model_id, resultado):
                 observables.append({'value': value, 'itype': itype})
         resultado['observables'] = observables
 
-# ==== FUNÇÃO REVISADA AQUI ====
 def buscar_threat_models(endpoint, timestamp=None, limit=3, offset=0):
     resultados = []
 
     while True:
         params = {'limit': limit, 'offset': offset}
-
-        if endpoint == 'threat_model_search':
-            params['sort_by'] = 'modified_ts'
-            if timestamp:
-                params['q'] = f'modified_ts:[{timestamp} TO *]'
-        else:
-            if timestamp:
-                params['modified_ts__gte'] = timestamp
+        if timestamp:
+            params['modified_ts__gt'] = timestamp  # ALTERAÇÃO AQUI ✅
 
         response = requests.get(f'{BASE_URL}/{endpoint}/', headers=HEADERS, params=params)
         response.raise_for_status()
