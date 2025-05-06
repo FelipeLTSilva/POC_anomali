@@ -4,10 +4,10 @@ import json
 from datetime import datetime
 
 # ==== PALAVRAS-CHAVE PARA FILTRAR ====
-KEYWORDS = ['aws', 'azure', 'kubernetes', 'k8s', 'vulnerability', 'incident', 'cloud']
+KEYWORDS = ['aws', 'azure', 'kubernetes', 'k8s', 'vulnerability', 'incident', 'cloud', 'GBHackers', 'KnowBe4', 'Cyb3rF0x']
 
 # ==== MODELOS SUPORTADOS ====
-INTEL_MODELS = {'ttp', 'tool', 'campaign', 'actor', 'vulnerability', 'incident'}
+INTEL_MODELS = {'tipreport', 'ttp', 'tool', 'campaign', 'actor', 'vulnerability', 'incident'}
 
 # ==== Funções Auxiliares ====
 
