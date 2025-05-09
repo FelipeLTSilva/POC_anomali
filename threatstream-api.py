@@ -53,6 +53,8 @@ def fetch_threat_models(endpoint, timestamp=None, limit=500, offset=0):
         response.raise_for_status()
 
         objects = response.json().get('objects', [])
+        print(json.dumps(objects, indent=2))
+        
         if not objects:
             break
 
