@@ -87,7 +87,15 @@ def buscar_threat_models(endpoint, timestamp=None, limit=500, offset=0):
                 # Fetch model details and observables
                 detalhar_modelo(model_type, model_id, resultado)
                 buscar_observables(model_type, model_id, resultado)
-                resultados.append(resultado)
+                
+                # **DEBUG LOGGING** - Check what we are getting before sending to Halo
+                print(f"🔍 Debugging result: {resultado}")
+                
+                # Only append the result if all required fields are present
+                if resultado.get('name') and resultado.get('created_ts') and resultado.get('tags') and resultado.get('observables'):
+                    resultados.append(resultado)
+                else:
+                    print(f"⚠️ Skipping incomplete result: {resultado['id']}")
 
         if not response.json().get('next'):
             break
@@ -170,6 +178,9 @@ if __name__ == '__main__':
         if resultados:
             token = obter_token_halo(HALO_CLIENT_ID, HALO_CLIENT_SECRET)
             for r in resultados:
+                # **DEBUG LOGGING** - Check the complete result before sending to Halo
+                print(f"🔎 Preparing to create ticket for: {r['name']} (ID: {r['id']})")
+                
                 # Only send results with non-empty required fields
                 if r.get('name') and r.get('created_ts') and r.get('tags') and r.get('observables'):
                     criar_ticket_halo(token, r)
