@@ -111,22 +111,22 @@ def criar_ticket_halo(token, resultado):
         "Content-Type": "application/json"
     }
 
-    payload = [{
-        "summary": f"[Threatstream] {resultado['model_type']} {resultado['id']}",
-        "details": f"Link: {resultado['link']}",
-        "tickettype_id": 42,
-        "team": "SMEs",
-        "priority_id": 1,
-        "customfields": [
-            {"id": 253, "value": str(resultado['id'])},
-            {"id": 254, "value": resultado['model_type']},
-            {"id": 255, "value": resultado['name']},
-            {"id": 260, "value": resultado['created_ts']},
-            {"id": 257, "value": resultado['link']},
-            {"id": 258, "value": ", ".join(resultado['tags'])},
-            {"id": 259, "value": json.dumps(resultado['observables'])}
-        ]
-    }]
+            payload = [{
+                "summary": f"[Threatstream] {resultado['model_type']} {resultado['id']}",
+                "details": f"Link: {resultado['link']}",
+                "tickettype_id": 42,
+                "team": "SMEs",
+                "priority_id": 1,
+                "customfields": {
+                    "CFThreatstreamid": str(resultado['id']),
+                    "CFThreatstreammodeltype": resultado['model_type'],
+                    "CFThreatstreamname": resultado['name'],
+                    "CFThreatstreamcreatedts": resultado['created_ts'],
+                    "CFThreatstreamlink": resultado['link'],
+                    "CFThreatstreamtags": ", ".join(resultado['tags']),
+                    "CFThreatstreamobservables": json.dumps(resultado['observables'])  # ou um resumo textual, se for muito grande
+                }
+            }]
 
     response = requests.post(url, headers=headers, json=payload)
     if response.status_code == 201:
