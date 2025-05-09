@@ -66,7 +66,7 @@ def buscar_threat_models(endpoint, timestamp=None, limit=10):
                     continue  # Evita duplicações
 
                 name = obj.get('name', '')
-                modified_ts = obj.get('modified_ts', '')
+                created_ts = obj.get('created_ts', '')
                 model_type = obj.get('model_type', endpoint)
 
                 if name and keyword_match(name) and model_type in INTEL_MODELS:
