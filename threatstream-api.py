@@ -4,8 +4,7 @@ import json
 from datetime import datetime
 
 # ==== PALAVRAS-CHAVE PARA FILTRAR ====
-KEYWORDS = ['aws', 'azure', 'kubernetes', 'k8s', 'vulnerability', 'incident', 'cloud', 'Cyb3rF0x',
-            'vandalism', 'KnowBe4', 'Android', 'Ransomware', 'Facebook', 'extortion']
+KEYWORDS = ['aws', 'azure', 'kubernetes', 'k8s', 'vulnerability', 'incident', 'cloud']
 
 # ==== MODELOS SUPORTADOS ====
 INTEL_MODELS = {'tipreport', 'ttp', 'tool', 'campaign', 'actor', 'vulnerability', 'incident'}
@@ -42,53 +41,47 @@ def buscar_observables(model_type, model_id, resultado):
                 observables.append({'value': value, 'itype': itype})
         resultado['observables'] = observables
 
-def buscar_threat_models(endpoint, timestamp=None, limit=10):
-    resultados_map = {}
+def buscar_threat_models(endpoint, timestamp=None, limit=500, offset=0):
+    resultados = []
 
-    for timestamp_field in ['created_ts', 'modified_ts']:
-        offset = 0
+    while True:
+        params = {'limit': limit, 'offset': offset}
+        if timestamp:
+            params['created_ts__gte'] = timestamp
 
-        while True:
-            params = {'limit': limit, 'offset': offset}
-            if timestamp:
-                params[f'{timestamp_field}__gte'] = timestamp
+        response = requests.get(f'{BASE_URL}/{endpoint}/', headers=HEADERS, params=params)
+        response.raise_for_status()
 
-            response = requests.get(f'{BASE_URL}/{endpoint}/', headers=HEADERS, params=params)
-            response.raise_for_status()
+        objetos = response.json().get('objects', [])
+        if not objetos:
+            break
 
-            objetos = response.json().get('objects', [])
-            if not objetos:
-                break
+        for obj in objetos:
+            name = obj.get('name', '')
+            created_ts = obj.get('created_ts', '')
+            model_id = obj.get('id')
+            model_type = obj.get('model_type', endpoint)
 
-            for obj in objetos:
-                model_id = obj.get('id')
-                if model_id in resultados_map:
-                    continue  # Evita duplicações
+            if name and keyword_match(name) and model_type in INTEL_MODELS:
+                resultado = {
+                    'id': model_id,
+                    'model_type': model_type,
+                    'name': name,
+                    'created_ts': created_ts,
+                    'link': f'https://ui.threatstream.com/{model_type}/{model_id}',
+                    'tags': [],
+                    'observables': []
+                }
 
-                name = obj.get('name', '')
-                created_ts = obj.get('created_ts', '')
-                model_type = obj.get('model_type', endpoint)
+                detalhar_modelo(model_type, model_id, resultado)
+                buscar_observables(model_type, model_id, resultado)
+                resultados.append(resultado)
 
-                if name and keyword_match(name) and model_type in INTEL_MODELS:
-                    resultado = {
-                        'id': model_id,
-                        'model_type': model_type,
-                        'name': name,
-                        'created_ts': created_ts,
-                        'link': f'https://ui.threatstream.com/{model_type}/{model_id}',
-                        'tags': [],
-                        'observables': []
-                    }
+        if not response.json().get('next'):
+            break
+        offset += limit
 
-                    detalhar_modelo(model_type, model_id, resultado)
-                    buscar_observables(model_type, model_id, resultado)
-                    resultados_map[model_id] = resultado
-
-            if not response.json().get('next'):
-                break
-            offset += limit
-
-    return list(resultados_map.values())
+    return resultados
 
 # ==== Integração com Halo ITSM ====
 
@@ -111,22 +104,22 @@ def criar_ticket_halo(token, resultado):
         "Content-Type": "application/json"
     }
 
-            payload = [{
-                "summary": f"[Threatstream] {resultado['model_type']} {resultado['id']}",
-                "details": f"Link: {resultado['link']}",
-                "tickettype_id": 42,
-                "team": "SMEs",
-                "priority_id": 1,
-                "customfields": {
-                    "CFThreatstreamid": str(resultado['id']),
-                    "CFThreatstreammodeltype": resultado['model_type'],
-                    "CFThreatstreamname": resultado['name'],
-                    "CFThreatstreamcreatedts": resultado['created_ts'],
-                    "CFThreatstreamlink": resultado['link'],
-                    "CFThreatstreamtags": ", ".join(resultado['tags']),
-                    "CFThreatstreamobservables": json.dumps(resultado['observables'])  # ou um resumo textual, se for muito grande
-                }
-            }]
+    payload = [{
+        "summary": f"[Threatstream] {resultado['model_type']} {resultado['id']}",
+        "details": f"Link: {resultado['link']}",
+        "tickettype_id": 42,
+        "team": "SMEs",
+        "priority_id": 1,
+        "customfields": {
+            "CFThreatstreamid": str(resultado['id']),
+            "CFThreatstreammodeltype": resultado['model_type'],
+            "CFThreatstreamname": resultado['name'],
+            "CFThreatstreamcreatedts": resultado['created_ts'],
+            "CFThreatstreamlink": resultado['link'],
+            "CFThreatstreamtags": ", ".join(resultado['tags']),
+            "CFThreatstreamobservables": json.dumps(resultado['observables'])
+        }
+    }]
 
     response = requests.post(url, headers=headers, json=payload)
     if response.status_code == 201:
