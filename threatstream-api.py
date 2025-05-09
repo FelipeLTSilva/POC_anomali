@@ -74,7 +74,7 @@ def buscar_threat_models(endpoint, timestamp=None, limit=10):
                         'id': model_id,
                         'model_type': model_type,
                         'name': name,
-                        'modified_ts': modified_ts,
+                        'created_ts': created_ts,
                         'link': f'https://ui.threatstream.com/{model_type}/{model_id}',
                         'tags': [],
                         'observables': []
@@ -121,7 +121,7 @@ def criar_ticket_halo(token, resultado):
             {"id": 253, "value": str(resultado['id'])},
             {"id": 254, "value": resultado['model_type']},
             {"id": 255, "value": resultado['name']},
-            {"id": 256, "value": resultado['modified_ts']},
+            {"id": 260, "value": resultado['created_ts']},
             {"id": 257, "value": resultado['link']},
             {"id": 258, "value": ", ".join(resultado['tags'])},
             {"id": 259, "value": json.dumps(resultado['observables'])}
