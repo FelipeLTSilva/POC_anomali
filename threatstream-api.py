@@ -3,41 +3,33 @@ import sys
 import json
 from datetime import datetime
 
-# ==== KEYWORDS TO FILTER ==== 
+# ==== PALAVRAS-CHAVE PARA FILTRAR ====
 KEYWORDS = ['aws', 'azure', 'kubernetes', 'k8s', 'vulnerability', 'incident', 'cloud']
 
-# ==== SUPPORTED MODELS ====
+# ==== MODELOS SUPORTADOS ====
 INTEL_MODELS = {'tipreport', 'ttp', 'tool', 'campaign', 'actor', 'vulnerability', 'incident'}
 
-# ==== Helper Functions ====
+# ==== Funções Auxiliares ====
 
 def keyword_match(text):
-    """Check if any keyword matches the provided text"""
     return any(kw.lower() in text.lower() for kw in KEYWORDS)
 
 def format_timestamp_for_api(ts):
-    """Format timestamp for API request"""
     try:
         dt = datetime.strptime(ts, "%Y%m%dT%H%M%S")
         return dt.strftime("%Y-%m-%dT%H:%M:%S")
     except ValueError:
-        print("❌ Invalid timestamp. Please use the format: YYYYMMDDTHHMMSS")
+        print("❌ Timestamp inválido. Use: YYYYMMDDTHHMMSS")
         sys.exit(1)
 
 def detalhar_modelo(model_type, model_id, resultado):
-    """Fetch additional details for the given model, e.g., tags"""
     url = f'{BASE_URL}/{model_type}/{model_id}/'
     response = requests.get(url, headers=HEADERS)
     if response.ok:
         obj = response.json()
-        # Ensure that tags are not empty
         resultado['tags'] = obj.get('tags', [])
-        # Additional fields can be fetched and checked here as needed
-        if not resultado['tags']:
-            resultado['tags'] = ["No tags available"]  # Default if tags are missing
 
 def buscar_observables(model_type, model_id, resultado):
-    """Fetch observables related to the given model"""
     url = f'{BASE_URL}/{model_type}/{model_id}/intelligence/'
     response = requests.get(url, headers=HEADERS)
     if response.ok:
@@ -48,11 +40,8 @@ def buscar_observables(model_type, model_id, resultado):
             if value and itype:
                 observables.append({'value': value, 'itype': itype})
         resultado['observables'] = observables
-        if not resultado['observables']:
-            resultado['observables'] = ["No observables found"]  # Default if observables are missing
 
 def buscar_threat_models(endpoint, timestamp=None, limit=500, offset=0):
-    """Search for threat models and filter based on keywords"""
     resultados = []
 
     while True:
@@ -84,18 +73,9 @@ def buscar_threat_models(endpoint, timestamp=None, limit=500, offset=0):
                     'observables': []
                 }
 
-                # Fetch model details and observables
                 detalhar_modelo(model_type, model_id, resultado)
                 buscar_observables(model_type, model_id, resultado)
-                
-                # **DEBUG LOGGING** - Check what we are getting before sending to Halo
-                print(f"🔍 Debugging result: {resultado}")
-                
-                # Only append the result if all required fields are present
-                if resultado.get('name') and resultado.get('created_ts') and resultado.get('tags') and resultado.get('observables'):
-                    resultados.append(resultado)
-                else:
-                    print(f"⚠️ Skipping incomplete result: {resultado['id']}")
+                resultados.append(resultado)
 
         if not response.json().get('next'):
             break
@@ -103,10 +83,9 @@ def buscar_threat_models(endpoint, timestamp=None, limit=500, offset=0):
 
     return resultados
 
-# ==== Integration with Halo ITSM ====
+# ==== Integração com Halo ITSM ====
 
 def obter_token_halo(client_id, client_secret):
-    """Obtain an authentication token from Halo ITSM"""
     url = "https://scoesoc.haloitsm.com/auth/token"
     data = {
         "grant_type": "client_credentials",
@@ -119,7 +98,6 @@ def obter_token_halo(client_id, client_secret):
     return response.json()['access_token']
 
 def criar_ticket_halo(token, resultado):
-    """Create a new ticket in Halo ITSM"""
     url = "https://scoesoc.haloitsm.com/api/tickets"
     headers = {
         "Authorization": f"Bearer {token}",
@@ -142,18 +120,23 @@ def criar_ticket_halo(token, resultado):
             {"id": 259, "value": json.dumps(resultado['observables'])}
         ]
     }]
-
+    
+    # PRINTING THE PAYLOAD BEFORE SENDING
+    print("\n[DEBUG] Enviando para o Halo:")
+    print(json.dumps(payload, indent=4))  # Exibe os dados no formato JSON
+    
+    # Envia a requisição POST
     response = requests.post(url, headers=headers, json=payload)
     if response.status_code == 201:
-        print(f"✅ Ticket created: {resultado['name']} (ID: {resultado['id']})")
+        print(f"✅ Ticket criado: {resultado['name']} (ID: {resultado['id']})")
     else:
-        print(f"❌ Failed to create ticket ({resultado['id']}): {response.status_code} - {response.text}")
+        print(f"❌ Falha ao criar ticket ({resultado['id']}): {response.status_code} - {response.text}")
 
 # ==== Entry Point ====
 
 if __name__ == '__main__':
     if len(sys.argv) != 7:
-        print("Usage: python3 threatstream-api.py <endpoint> <anomali_user> <anomali_apikey> <timestamp> <halo_client_id> <halo_client_secret>")
+        print("Uso: python3 threatstream-api.py <endpoint> <anomali_user> <anomali_apikey> <timestamp> <halo_client_id> <halo_client_secret>")
         sys.exit(1)
 
     ENDPOINT = sys.argv[1]
@@ -171,23 +154,15 @@ if __name__ == '__main__':
     }
 
     try:
-        # Get results from threat model search
         resultados = buscar_threat_models(ENDPOINT, timestamp=TIMESTAMP)
-        print(f"🔎 {len(resultados)} items found")
+        print(f"🔎 {len(resultados)} itens encontrados")
 
         if resultados:
             token = obter_token_halo(HALO_CLIENT_ID, HALO_CLIENT_SECRET)
             for r in resultados:
-                # **DEBUG LOGGING** - Check the complete result before sending to Halo
-                print(f"🔎 Preparing to create ticket for: {r['name']} (ID: {r['id']})")
-                
-                # Only send results with non-empty required fields
-                if r.get('name') and r.get('created_ts') and r.get('tags') and r.get('observables'):
-                    criar_ticket_halo(token, r)
-                else:
-                    print(f"⚠️ Ignored result (missing data): ID {r.get('id')}")
+                criar_ticket_halo(token, r)
         else:
-            print("ℹ️ No results matching the criteria.")
+            print("ℹ️ Nenhum resultado com os critérios definidos.")
 
     except Exception as e:
-        print(f"❗Error: {e}")
+        print(f"❗Erro: {e}")
