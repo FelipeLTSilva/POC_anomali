@@ -3,13 +3,13 @@ import sys
 import json
 from datetime import datetime
 
-# ==== PALAVRAS-CHAVE PARA FILTRAR ====
+# ==== KEYWORDS FOR FILTERING ====
 KEYWORDS = ['aws', 'azure', 'kubernetes', 'k8s', 'vulnerability', 'incident', 'cloud']
 
-# ==== MODELOS SUPORTADOS ====
+# ==== SUPPORTED INTEL MODELS ====
 INTEL_MODELS = {'tipreport', 'ttp', 'tool', 'campaign', 'actor', 'vulnerability', 'incident'}
 
-# ==== Funções Auxiliares ====
+# ==== Utility Functions ====
 
 def keyword_match(text):
     return any(kw.lower() in text.lower() for kw in KEYWORDS)
@@ -17,19 +17,19 @@ def keyword_match(text):
 def format_timestamp_for_api(ts):
     try:
         dt = datetime.strptime(ts, "%Y%m%dT%H%M%S")
-        return dt.strftime("%Y-%m-%dT%H:%M:%S")
+        return dt.strftime("%Y-%m-%dT%H:%M:%SZ")  # Added 'Z' for UTC
     except ValueError:
-        print("❌ Timestamp inválido. Use: YYYYMMDDTHHMMSS")
+        print("❌ Invalid timestamp. Use: YYYYMMDDTHHMMSS")
         sys.exit(1)
 
-def detalhar_modelo(model_type, model_id, resultado):
+def get_model_details(model_type, model_id, result):
     url = f'{BASE_URL}/{model_type}/{model_id}/'
     response = requests.get(url, headers=HEADERS)
     if response.ok:
         obj = response.json()
-        resultado['tags'] = obj.get('tags', [])
+        result['tags'] = obj.get('tags', [])
 
-def buscar_observables(model_type, model_id, resultado):
+def fetch_observables(model_type, model_id, result):
     url = f'{BASE_URL}/{model_type}/{model_id}/intelligence/'
     response = requests.get(url, headers=HEADERS)
     if response.ok:
@@ -39,10 +39,10 @@ def buscar_observables(model_type, model_id, resultado):
             itype = item.get('itype')
             if value and itype:
                 observables.append({'value': value, 'itype': itype})
-        resultado['observables'] = observables
+        result['observables'] = observables
 
-def buscar_threat_models(endpoint, timestamp=None, limit=50, offset=0):
-    resultados = []
+def fetch_threat_models(endpoint, timestamp=None, limit=100, offset=0):
+    results = []
 
     while True:
         params = {'limit': limit, 'offset': offset}
@@ -52,18 +52,18 @@ def buscar_threat_models(endpoint, timestamp=None, limit=50, offset=0):
         response = requests.get(f'{BASE_URL}/{endpoint}/', headers=HEADERS, params=params)
         response.raise_for_status()
 
-        objetos = response.json().get('objects', [])
-        if not objetos:
+        objects = response.json().get('objects', [])
+        if not objects:
             break
 
-        for obj in objetos:
+        for obj in objects:
             name = obj.get('name', '')
             created_ts = obj.get('created_ts', '')
             model_id = obj.get('id')
             model_type = obj.get('model_type', endpoint)
 
             if name and keyword_match(name) and model_type in INTEL_MODELS:
-                resultado = {
+                result = {
                     'id': model_id,
                     'model_type': model_type,
                     'name': name,
@@ -73,19 +73,19 @@ def buscar_threat_models(endpoint, timestamp=None, limit=50, offset=0):
                     'observables': []
                 }
 
-                detalhar_modelo(model_type, model_id, resultado)
-                buscar_observables(model_type, model_id, resultado)
-                resultados.append(resultado)
+                get_model_details(model_type, model_id, result)
+                fetch_observables(model_type, model_id, result)
+                results.append(result)
 
         if not response.json().get('next'):
             break
         offset += limit
 
-    return resultados
+    return results
 
-# ==== Integração com Halo ITSM ====
+# ==== HALO ITSM Integration ====
 
-def obter_token_halo(client_id, client_secret):
+def get_halo_token(client_id, client_secret):
     url = "https://scoesoc.haloitsm.com/auth/token"
     data = {
         "grant_type": "client_credentials",
@@ -97,7 +97,7 @@ def obter_token_halo(client_id, client_secret):
     response.raise_for_status()
     return response.json()['access_token']
 
-def criar_ticket_halo(token, resultado):
+def create_halo_ticket(token, result):
     url = "https://scoesoc.haloitsm.com/api/tickets"
     headers = {
         "Authorization": f"Bearer {token}",
@@ -105,33 +105,33 @@ def criar_ticket_halo(token, resultado):
     }
 
     payload = [{
-        "summary": f"[Threatstream] {resultado['model_type']} {resultado['id']}",
-        "details": f"Link: {resultado['link']}",
+        "summary": f"[Threatstream] {result['model_type']} {result['id']}",
+        "details": f"Link: {result['link']}",
         "tickettype_id": 42,
         "team": "SMEs",
         "priority_id": 1,
         "customfields": [
-            {"name": "CFThreatstreamid", "value": str(resultado['id'])},
-            {"name": "CFThreatstreammodeltype", "value": resultado['model_type']},
-            {"name": "CFThreatstreamname", "value": resultado['name']},
-            {"name": "CFThreatstreamcreatedts", "value": resultado['created_ts']},
-            {"name": "CFThreatstreamlink", "value": resultado['link']},
-            {"name": "CFThreatstreamtags", "value": json.dumps(resultado['tags'])},
-            {"name": "CFThreatstreamobservables", "value": json.dumps(resultado['observables'])}
+            {"name": "CFThreatstreamid", "value": str(result['id'])},
+            {"name": "CFThreatstreammodeltype", "value": result['model_type']},
+            {"name": "CFThreatstreamname", "value": result['name']},
+            {"name": "CFThreatstreamcreatedts", "value": result['created_ts']},
+            {"name": "CFThreatstreamlink", "value": result['link']},
+            {"name": "CFThreatstreamtags", "value": json.dumps(result['tags'])},
+            {"name": "CFThreatstreamobservables", "value": json.dumps(result['observables'])}
         ]
     }]
 
     response = requests.post(url, headers=headers, json=payload)
     if response.status_code == 201:
-        print(f"✅ Ticket criado: {resultado['name']} (ID: {resultado['id']})")
+        print(f"✅ Ticket created: {result['name']} (ID: {result['id']})")
     else:
-        print(f"❌ Falha ao criar ticket ({resultado['id']}): {response.status_code} - {response.text}")
+        print(f"❌ Failed to create ticket ({result['id']}): {response.status_code} - {response.text}")
 
 # ==== Entry Point ====
 
 if __name__ == '__main__':
     if len(sys.argv) != 7:
-        print("Uso: python3 threatstream-api.py <endpoint> <anomali_user> <anomali_apikey> <timestamp> <halo_client_id> <halo_client_secret>")
+        print("Usage: python3 threatstream-api.py <endpoint> <anomali_user> <anomali_apikey> <timestamp> <halo_client_id> <halo_client_secret>")
         sys.exit(1)
 
     ENDPOINT = sys.argv[1]
@@ -149,15 +149,15 @@ if __name__ == '__main__':
     }
 
     try:
-        resultados = buscar_threat_models(ENDPOINT, timestamp=TIMESTAMP)
-        print(f"🔎 {len(resultados)} itens encontrados")
+        results = fetch_threat_models(ENDPOINT, timestamp=TIMESTAMP)
+        print(f"🔎 {len(results)} items found")
 
-        if resultados:
-            token = obter_token_halo(HALO_CLIENT_ID, HALO_CLIENT_SECRET)
-            for r in resultados:
-                criar_ticket_halo(token, r)
+        if results:
+            token = get_halo_token(HALO_CLIENT_ID, HALO_CLIENT_SECRET)
+            for r in results:
+                create_halo_ticket(token, r)
         else:
-            print("ℹ️ Nenhum resultado com os critérios definidos.")
+            print("ℹ️ No results found with the given criteria.")
 
     except Exception as e:
-        print(f"❗Erro: {e}")
+        print(f"❗Error: {e}")
