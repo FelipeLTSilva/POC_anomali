@@ -41,7 +41,7 @@ def buscar_observables(model_type, model_id, resultado):
                 observables.append({'value': value, 'itype': itype})
         resultado['observables'] = observables
 
-def buscar_threat_models(endpoint, timestamp=None, limit=500, offset=0):
+def buscar_threat_models(endpoint, timestamp=None, limit=50, offset=0):
     resultados = []
 
     while True:
@@ -116,7 +116,7 @@ def criar_ticket_halo(token, resultado):
             {"id": 255, "value": resultado['name']},
             {"id": 260, "value": resultado['created_ts']},
             {"id": 257, "value": resultado['link']},
-            {"id": 258, "value": ", ".join(resultado['tags'])},
+            {"id": 261, "value": ", ".join(resultado['tags'])},
             {"id": 259, "value": json.dumps(resultado['observables'])}
         ]
     }]
