@@ -42,7 +42,7 @@ def buscar_observables(model_type, model_id, resultado):
                 observables.append({'value': value, 'itype': itype})
         resultado['observables'] = observables
 
-def buscar_threat_models(endpoint, timestamp=None, limit=50):
+def buscar_threat_models(endpoint, timestamp=None, limit=5):
     resultados_map = {}
 
     for timestamp_field in ['created_ts', 'modified_ts']:
