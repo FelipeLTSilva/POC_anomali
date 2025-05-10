@@ -123,7 +123,7 @@ def criar_ticket_halo(token, resultado):
             {"id": 255, "value": resultado['name']},
             {"id": 256, "value": resultado['modified_ts']},
             {"id": 257, "value": resultado['link']},
-            {"id": 261, "value": json.dumps(resultado['tags'])},
+            {"id": 261, "value": ", ".join(resultado['tags'])},
             #//{"id": 259, "value": json.dumps(resultado['observables'])}
         ]
     }]
