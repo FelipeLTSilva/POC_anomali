@@ -110,15 +110,15 @@ def criar_ticket_halo(token, resultado):
         "tickettype_id": 42,
         "team": "SMEs",
         "priority_id": 1,
-        "customfields": [
-            {"id": 253, "value": str(resultado['id'])},
-            {"id": 254, "value": resultado['model_type']},
-            {"id": 255, "value": resultado['name']},
-            {"id": 260, "value": resultado['created_ts']},
-            {"id": 257, "value": resultado['link']},
-            {"id": 261, "value": ", ".join(resultado['tags'])},
-            {"id": 259, "value": json.dumps(resultado['observables'])}
-        ]
+        "customfields": {
+            "CFThreatstreamid": str(resultado['id']),
+            "CFThreatstreammodeltype": resultado['model_type'],
+            "CFThreatstreamname": resultado['name'],
+            "CFThreatstreamcreatedts": resultado['created_ts'],
+            "CFThreatstreamlink": resultado['link'],
+            "CFThreatstreamtags2": ", ".join(resultado['tags']),
+            "CFThreatstreamobservables": json.dumps(resultado['observables'])
+        }
     }]
 
     response = requests.post(url, headers=headers, json=payload)
