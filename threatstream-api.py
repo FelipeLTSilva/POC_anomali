@@ -116,7 +116,7 @@ def criar_ticket_halo(token, resultado):
             {"name": "CFThreatstreamname", "value": resultado['name']},
             {"name": "CFThreatstreamcreatedts", "value": resultado['created_ts']},
             {"name": "CFThreatstreamlink", "value": resultado['link']},
-            {"name": "CFThreatstreamtags2", "value": json.dumps(resultado['tags'])},
+            {"name": "CFThreatstreamtags2", "value": ", ".join(resultado['tags'])},
             {"name": "CFThreatstreamobservables", "value": json.dumps(resultado['observables'])}
         ]
     }]
